@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Web App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Interact with Gemini AI</h1>
+        <textarea id="promptInput" placeholder="Enter your prompt here..." rows="5"></textarea>
+        <button id="generateButton">Generate Text</button>
+        <div id="loading" class="hidden">Generating...</div>
+        <div id="outputContainer">
+            <h2>Generated Content:</h2>
+            <p id="geminiOutput"></p>
+        </div>
+        <div id="errorContainer" class="hidden">
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const promptInput = document.getElementById('promptInput');
+            const generateButton = document.getElementById('generateButton');
+            const geminiOutput = document.getElementById('geminiOutput');
+            const loadingDiv = document.getElementById('loading');
+            const errorContainer = document.getElementById('errorContainer');
+            const errorMessage = document.getElementById('errorMessage');
+
+            generateButton.addEventListener('click', async () => {
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    alert('Please enter a prompt!');
+                    return;
+                }
+
+                geminiOutput.textContent = '';
+                errorContainer.classList.add('hidden');
+                errorMessage.textContent = '';
+                loadingDiv.classList.remove('hidden'); // Show loading indicator
+                generateButton.disabled = true; // Disable button during generation
+
+                try {
+                    const response = await fetch('/generate_text', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ prompt: prompt })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        geminiOutput.textContent = data.generated_text;
+                    } else {
+                        errorContainer.classList.remove('hidden');
+                        errorMessage.textContent = `Error: ${data.error || 'Something went wrong.'}`;
+                    }
+                } catch (error) {
+                    errorContainer.classList.remove('hidden');
+                    errorMessage.textContent = `Network Error: ${error.message}`;
+                } finally {
+                    loadingDiv.classList.add('hidden'); // Hide loading indicator
+                    generateButton.disabled = false; // Re-enable button
+                }
+            });
+        });
+    </script>
+</body>
+</html>
