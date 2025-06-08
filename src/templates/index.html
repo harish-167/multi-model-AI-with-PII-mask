@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini AI Web App</title>
+    <title>Gemini AI Web App with History</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
         <h1>Interact with Gemini AI</h1>
+
+        <div id="conversationHistory">
+            </div>
+
         <textarea id="promptInput" placeholder="Enter your prompt here..." rows="5"></textarea>
         <button id="generateButton">Generate Text</button>
         <div id="loading" class="hidden">Generating...</div>
-        <div id="outputContainer">
-            <h2>Generated Content:</h2>
-            <p id="geminiOutput"></p>
-        </div>
         <div id="errorContainer" class="hidden">
             <p id="errorMessage"></p>
         </div>
@@ -25,10 +25,22 @@
         document.addEventListener('DOMContentLoaded', () => {
             const promptInput = document.getElementById('promptInput');
             const generateButton = document.getElementById('generateButton');
-            const geminiOutput = document.getElementById('geminiOutput');
+            const conversationHistoryDiv = document.getElementById('conversationHistory');
             const loadingDiv = document.getElementById('loading');
             const errorContainer = document.getElementById('errorContainer');
             const errorMessage = document.getElementById('errorMessage');
+
+            // Initialize conversation history array
+            let conversation = [];
+
+            // Function to display a message in the conversation history
+            function displayMessage(role, text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', role); // Add classes for styling (e.g., 'user', 'model')
+                messageDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Gemini'}:</strong> ${text}`;
+                conversationHistoryDiv.appendChild(messageDiv);
+                conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight; // Scroll to bottom
+            }
 
             generateButton.addEventListener('click', async () => {
                 const prompt = promptInput.value.trim();
@@ -37,7 +49,13 @@
                     return;
                 }
 
-                geminiOutput.textContent = '';
+                // Display user's message immediately
+                displayMessage('user', prompt);
+
+                // Add user's message to our local history array
+                conversation.push({ role: 'user', parts: [{ text: prompt }] });
+
+                promptInput.value = ''; // Clear input field
                 errorContainer.classList.add('hidden');
                 errorMessage.textContent = '';
                 loadingDiv.classList.remove('hidden'); // Show loading indicator
@@ -49,23 +67,39 @@
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ prompt: prompt })
+                        body: JSON.stringify({ prompt: prompt, history: conversation }) // Send full history
                     });
 
                     const data = await response.json();
 
                     if (response.ok) {
-                        geminiOutput.textContent = data.generated_text;
+                        const generatedText = data.generated_text;
+                        const updatedHistory = data.history;
+
+                        // Display Gemini's response
+                        displayMessage('model', generatedText);
+
+                        // Update our local conversation history with the full history from backend
+                        // This ensures our local history is always in sync with Gemini's chat object
+                        conversation = updatedHistory;
+
                     } else {
                         errorContainer.classList.remove('hidden');
                         errorMessage.textContent = `Error: ${data.error || 'Something went wrong.'}`;
+                        // If there was an error, remove the last user message from history
+                        // as it wasn't successfully processed by Gemini
+                        conversation.pop();
                     }
                 } catch (error) {
                     errorContainer.classList.remove('hidden');
                     errorMessage.textContent = `Network Error: ${error.message}`;
+                    // If there was an error, remove the last user message from history
+                    // as it wasn't successfully processed by Gemini
+                    conversation.pop();
                 } finally {
                     loadingDiv.classList.add('hidden'); // Hide loading indicator
                     generateButton.disabled = false; // Re-enable button
+                    promptInput.focus(); // Focus input for next prompt
                 }
             });
         });
