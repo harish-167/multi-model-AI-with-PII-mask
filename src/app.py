@@ -9,7 +9,7 @@ app = Flask(__name__)
 # It's highly recommended to use environment variables for production
 # For this example, we'll put it directly, but for real apps, use:
 # os.environ.get("GOOGLE_API_KEY")
-genai.configure(api_key="AIzaSyDRDZUnshdOdl1Je_WvsyBl7MjovPXqB2o")
+genai.configure(api_key="YOUR-API-KEY")
 
 # Choose a model
 model = genai.GenerativeModel('gemini-2.0-flash')
