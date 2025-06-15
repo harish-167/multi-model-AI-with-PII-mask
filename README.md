@@ -1,8 +1,7 @@
 # About gen-ai-app
-A web application integrated with various generative AI models.
+A containerized web application integrated with various generative AI models.
 
-### Install dependencies
-`pip install Flask google-generativeai`
-
-### Run Flask application
-`python app.py`
+### Steps to build and run
+* Create a docker image using the [dockerfile](https://github.com/harish-167/gen-ai-app/blob/main/dockerfile) and `docker build` command
+* Create and run a new container from the image using `docker run` command
+* Open http://localhost:5000/ to use the web app
