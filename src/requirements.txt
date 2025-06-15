@@ -1,3 +1,2 @@
-gunicorn
+Flask
 google-generativeai
-python-dotenv

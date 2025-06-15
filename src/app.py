@@ -1,81 +1,57 @@
 import os
-import json
 import google.generativeai as genai
-from dotenv import load_dotenv
+from flask import Flask, render_template, request, jsonify
 
-# Load environment variables from .env file
-load_dotenv()
+app = Flask(__name__)
 
-# Configure the Gemini API
-try:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-pro')
-    # For simplicity, we create one chat session that persists as long as the app is running.
-    # In a real multi-user app, you would manage chat histories per user session.
-    chat = model.start_chat(history=[])
-    print("Gemini model initialized successfully.")
-except Exception as e:
-    print(f"Error initializing Gemini: {e}")
-    model = None
-    chat = None
+# Configure Google Generative AI
+# IMPORTANT: Replace "YOUR_GEMINI_API_KEY" with your actual API key
+# It's highly recommended to use environment variables for production
+# For this example, we'll put it directly, but for real apps, use:
+# os.environ.get("GOOGLE_API_KEY")
+genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
-def application(environ, start_response):
-    """
-    The main WSGI application function.
-    `environ` is a dictionary containing CGI-style environment variables.
-    `start_response` is a function for sending the HTTP status and headers.
-    """
-    # --- Handle the chat request ---
-    if environ['REQUEST_METHOD'] == 'POST' and environ['PATH_INFO'] == '/chat':
-        if not chat:
-            # Handle case where Gemini failed to initialize
-            status = '500 Internal Server Error'
-            headers = [('Content-type', 'application/json')]
-            start_response(status, headers)
-            error_response = {'response': 'Error: AI model is not configured.'}
-            return [json.dumps(error_response).encode('utf-8')]
+# Choose a model
+model = genai.GenerativeModel('gemini-2.0-flash')
 
-        try:
-            # Get the length of the request body
-            request_body_size = int(environ.get('CONTENT_LENGTH', 0))
-        except (ValueError):
-            request_body_size = 0
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        # Read the user's message from the request body
-        request_body = environ['wsgi.input'].read(request_body_size)
-        data = json.loads(request_body)
-        user_message = data.get('message', '')
+@app.route('/generate_text', methods=['POST'])
+def generate_text():
+    data = request.json
+    user_prompt = data.get('prompt')
+    # Receive the entire conversation history from the frontend
+    conversation_history = data.get('history', [])
+    if not user_prompt:
+        return jsonify({'error': 'No prompt provided'}), 400
 
-        if not user_message:
-            status = '400 Bad Request'
-            headers = [('Content-type', 'application/json')]
-            start_response(status, headers)
-            error_response = {'response': 'Error: No message provided.'}
-            return [json.dumps(error_response).encode('utf-8')]
+    try:
+        chat = model.start_chat(history=conversation_history)
+        # Send the new user message to the chat
+        response = chat.send_message(user_prompt)
 
-        # Send message to Gemini and get the response
-        try:
-            response = chat.send_message(user_message, stream=True)
-            ai_response_content = "".join([chunk.text for chunk in response])
-        except Exception as e:
-            status = '500 Internal Server Error'
-            headers = [('Content-type', 'application/json')]
-            start_response(status, headers)
-            error_response = {'response': f'Error from AI API: {e}'}
-            return [json.dumps(error_response).encode('utf-8')]
-
-
-        # Send a successful response back to the client
-        status = '200 OK'
-        headers = [('Content-type', 'application/json')]
-        start_response(status, headers)
+        #response = model.generate_content(user_prompt)
+        # Assuming the response has a 'text' attribute
+        generated_content = response.text
         
-        response_data = {'response': ai_response_content}
-        return [json.dumps(response_data).encode('utf-8')]
+        # Update the conversation history with the new user input and model response
+        # The chat.history object now contains the updated conversation.
+        # We need to convert it to a serializable format for JSON.
+        updated_history = [
+            {'role': message.role, 'parts': [part.text for part in message.parts]}
+            for message in chat.history
+        ]
 
-    # --- Handle all other requests with a 404 ---
-    else:
-        status = '404 Not Found'
-        headers = [('Content-type', 'text/plain')]
-        start_response(status, headers)
-        return [b'Not Found']
+        return jsonify({
+            'generated_text': generated_content,
+            'history': updated_history # Send back the full updated history
+        })
+    except Exception as e:
+        # Log the full exception for debugging
+        print(f"Error calling Gemini API: {e}")
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True,host='0.0.0.0',port=5000) # debug=True allows for automatic reloads on code changes
