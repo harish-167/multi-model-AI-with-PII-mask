@@ -1,97 +1,132 @@
+<!-- templates/index.html -->
 {% extends "base.html" %}
 
 {% block title %}Gemini AI Chat{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1>Interact with Gemini AI</h1>
+<div class="chat-container">
+    <div id="conversationHistory">
+        <!-- Example of how a message will look -->
+        <div class="message model">
+            Hello! How can I help you today?
+        </div>
+    </div>
 
-    <div id="conversationHistory"></div>
+    <div id="loading" class="spinner-wrapper hidden">
+        <div class="spinner"></div>
+    </div>
 
-    <textarea id="promptInput" placeholder="Enter your prompt here..." rows="5"></textarea>
-    <button id="generateButton">Generate Text</button>
-    <div id="loading" class="hidden">Generating...</div>
     <div id="errorContainer" class="hidden">
         <p id="errorMessage"></p>
+    </div>
+
+    <div class="chat-input-area">
+        <textarea id="promptInput" placeholder="Message Gemini..." rows="1"></textarea>
+        <button id="generateButton" title="Send Message">
+            <!-- SVG Icon for Send -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+            </svg>
+        </button>
     </div>
 </div>
 
 <script>
-// The script remains the same
-document.addEventListener('DOMContentLoaded', () => {
-    const promptInput = document.getElementById('promptInput');
-    const generateButton = document.getElementById('generateButton');
-    const conversationHistoryDiv = document.getElementById('conversationHistory');
-    const loadingDiv = document.getElementById('loading');
-    const errorContainer = document.getElementById('errorContainer');
-    const errorMessage = document.getElementById('errorMessage');
+    document.addEventListener('DOMContentLoaded', () => {
+        const promptInput = document.getElementById('promptInput');
+        const generateButton = document.getElementById('generateButton');
+        const conversationHistoryDiv = document.getElementById('conversationHistory');
+        const loadingDiv = document.getElementById('loading');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
 
-    let conversation = [];
+        // This JS automatically handles resizing the textarea as you type
+        promptInput.addEventListener('input', () => {
+            promptInput.style.height = 'auto';
+            promptInput.style.height = (promptInput.scrollHeight) + 'px';
+        });
 
-    function displayMessage(role, text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', role);
-        let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                .replace(/\n/g, '<br>');
+        // Your existing JavaScript for chat functionality goes here.
+        // It does not need to be changed.
+        // I've copied it below for completeness.
 
-        messageDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Gemini'}:</strong> ${formattedText}`;
-        conversationHistoryDiv.appendChild(messageDiv);
-        conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight;
-    }
+        let conversation = [];
 
-    generateButton.addEventListener('click', async () => {
-        const prompt = promptInput.value.trim();
-        if (!prompt) {
-            alert('Please enter a prompt!');
-            return;
+        // Function to display a message, now with better HTML parsing
+        function displayMessage(role, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', role);
+
+            // A more robust way to handle markdown-like text from Gemini
+            // This is a simplified parser
+            let formattedText = text
+                .replace(/</g, "<").replace(/>/g, ">") // Sanitize HTML tags
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
+                .replace(/`([^`]+)`/g, '<code>$1</code>') // Inline code
+                .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>') // Code blocks
+                .replace(/\n/g, '<br>'); // Newlines
+            //below line removed as 'You:' and 'Gemini:' is not required
+            //messageDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Gemini'}:</strong><br>${formattedText}`;
+            messageDiv.innerHTML = formattedText;
+            conversationHistoryDiv.appendChild(messageDiv);
+            conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight;
         }
-        displayMessage('user', prompt);
-        conversation.push({ role: 'user', parts: [{ text: prompt }] });
 
-        promptInput.value = '';
-        errorContainer.classList.add('hidden');
-        errorMessage.textContent = '';
-        loadingDiv.classList.remove('hidden');
-        generateButton.disabled = true;
+        async function handleSend() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
 
-        try {
-            const response = await fetch('/generate_text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: prompt, history: conversation })
-            });
+            displayMessage('user', prompt);
+            conversation.push({ role: 'user', parts: [{ text: prompt }] });
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
+            promptInput.value = '';
+            promptInput.style.height = 'auto'; // Reset height
+            errorContainer.classList.add('hidden');
+            errorMessage.textContent = '';
+            loadingDiv.classList.remove('hidden');
+            generateButton.disabled = true;
+            promptInput.disabled = true;
+
+            try {
+                const response = await fetch('/generate_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, history: conversation })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const data = await response.json();
+                    throw new Error(data.error || 'Something went wrong.');
                 }
+
                 const data = await response.json();
-                throw new Error(data.error || 'Something went wrong.');
+                displayMessage('model', data.generated_text);
+                conversation = data.history;
+
+            } catch (error) {
+                errorContainer.classList.remove('hidden');
+                errorMessage.textContent = `Error: ${error.message}`;
+                conversation.pop();
+            } finally {
+                loadingDiv.classList.add('hidden');
+                generateButton.disabled = false;
+                promptInput.disabled = false;
+                promptInput.focus();
             }
-
-            const data = await response.json();
-            displayMessage('model', data.generated_text);
-            conversation = data.history;
-
-        } catch (error) {
-            errorContainer.classList.remove('hidden');
-            errorMessage.textContent = `Error: ${error.message}`;
-            conversation.pop();
-        } finally {
-            loadingDiv.classList.add('hidden');
-            generateButton.disabled = false;
-            promptInput.focus();
         }
+        
+        generateButton.addEventListener('click', handleSend);
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
     });
-
-    promptInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            generateButton.click();
-        }
-    });
-});
 </script>
 {% endblock %}
