@@ -1,117 +1,120 @@
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f4f4f4;
+/* Add these styles to the end of your style.css file */
+
+/* Navbar */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #333;
+    color: white;
+    padding: 10px 40px;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     box-sizing: border-box;
 }
-
-.container {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 700px;
-    text-align: center;
-}
-
-h1 {
-    color: #333;
-    margin-bottom: 25px;
-}
-
-/* New: Conversation History styles */
-#conversationHistory {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 20px;
-    max-height: 400px; /* Limit height */
-    overflow-y: auto; /* Enable scrolling */
-    background-color: #fcfcfc;
-    text-align: left; /* Align text within messages */
-}
-
-.message {
-    margin-bottom: 10px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    line-height: 1.5;
-}
-
-.message strong {
+.nav-brand {
+    font-size: 1.5em;
     font-weight: bold;
+    color: white;
+    text-decoration: none;
+}
+.nav-links a, .nav-links span {
+    color: white;
+    text-decoration: none;
+    margin-left: 20px;
 }
 
-.message.user {
-    background-color: #e6f7ff; /* Light blue for user */
-    color: #333;
-    text-align: right; /* User messages float right */
-    margin-left: 20%; /* User message takes less width */
-}
-
-.message.model {
-    background-color: #eaffe6; /* Light green for Gemini */
-    color: #333;
-    text-align: left; /* Model messages float left */
-    margin-right: 20%; /* Model message takes less width */
+/* Make body content start below the fixed navbar */
+body {
+    padding-top: 80px; /* Adjust based on navbar height */
 }
 
 
-textarea {
-    width: calc(100% - 20px);
-    padding: 10px;
-    margin-bottom: 15px;
+/* Auth Form Styles */
+.auth-container {
+    max-width: 400px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #fff;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-    resize: vertical;
-    min-height: 80px; /* Slightly reduced height */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
-button {
+.auth-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.auth-button {
+    width: 100%;
+    padding: 10px;
     background-color: #4CAF50;
     color: white;
-    padding: 12px 20px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 18px;
-    transition: background-color 0.3s ease;
+    font-size: 16px;
 }
-
-button:hover {
+.auth-button:hover {
     background-color: #45a049;
 }
-
-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
+.auth-links {
+    text-align: center;
+    margin-top: 20px;
 }
 
-#loading {
-    margin-top: 20px;
-    font-style: italic;
-    color: #666;
-}
-
-/* Removed previous outputContainer, as history will handle it */
-
-#errorContainer {
-    margin-top: 20px;
-    padding: 10px;
-    background-color: #ffe0e0;
-    border: 1px solid #ffb3b3;
-    color: #cc0000;
+/* Flash Messages */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
     border-radius: 4px;
-    text-align: left;
+    text-align: center;
+}
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
 }
 
-.hidden {
-    display: none;
+.error-message {
+    color: red;
+    font-size: 0.8em;
+}
+
+.content-wrapper {
+    width: 90%;
+    max-width: 900px;
+    margin: 0 auto;
 }
