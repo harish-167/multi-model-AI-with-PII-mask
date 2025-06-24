@@ -1,0 +1,7 @@
+Flask
+google-generativeai
+Flask-SQLAlchemy
+Flask-Login
+Flask-Bcrypt
+Flask-WTF
+python-dotenv
