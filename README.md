@@ -1,7 +1,10 @@
 # About gen-ai-app
-A containerized web application integrated with various generative AI models.
+A Python Flask Generative AI application using Gemini 1.5 Flash.
 
 ### Steps to build and run
-* Create a docker image using the [dockerfile](https://github.com/harish-167/gen-ai-app/blob/main/dockerfile) and `docker build` command
-* Create and run a new container from the image using `docker run` command
-* Open http://localhost:5000/ to use the web app
+Follow the below steps to build and run as container.
+* Create a docker network
+* Use the dockerfile of [application](https://github.com/harish-167/gen-ai-app/blob/isolate-user-auth/app/dockerfile) and [authentication](https://github.com/harish-167/gen-ai-app/blob/isolate-user-auth/auth/dockerfile) to create image using `docker build` command
+* Run a container using the below command
+  * `docker run -d --name <auth-container> --network <docker-network> --hostname auth-service -v <db-store-path>:/data --env-file ./.env <auth-image>`
+  * `docker run -d --name <app-container> --network <docker-network> -p <local-port>:5000 --env-file ./.env <app-image>`

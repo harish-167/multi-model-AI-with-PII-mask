@@ -12,7 +12,7 @@
     <nav class="navbar">
         <a href="{{ url_for('index') }}" class="nav-brand">Gemini Chat</a>
         <div class="nav-links">
-            {% if current_user.is_authenticated %}
+            {% if current_user %}
                 <span>Welcome, {{ current_user.username }}!</span>
                 <a href="{{ url_for('logout') }}">Logout</a>
             {% else %}
