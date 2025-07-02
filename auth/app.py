@@ -17,8 +17,6 @@ app = Flask(__name__)
 
 # --- CONFIGURATIONS ---
 app.config['SECRET_KEY'] = os.environ.get('AUTH_SECRET_KEY')
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/auth.db'
-#app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Construct the PostgreSQL connection string from environment variables
 db_user = os.environ.get('POSTGRES_USER')
