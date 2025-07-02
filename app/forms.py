@@ -1,7 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
-from models import User
+from wtforms.validators import DataRequired, Length, EqualTo
 
 class SignupForm(FlaskForm):
     """Form for users to create new account"""
@@ -19,10 +18,8 @@ class SignupForm(FlaskForm):
     )
     submit = SubmitField('Sign Up')
 
-    def validate_username(self, username):
-        user = User.query.filter_by(username=username.data).first()
-        if user:
-            raise ValidationError('That username is already taken. Please choose a different one.')
+    # The validation for existing username is removed because
+    # the Auth service will handle it.
 
 class LoginForm(FlaskForm):
     """Form for users to login"""
