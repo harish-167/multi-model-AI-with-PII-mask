@@ -1,0 +1,63 @@
+version: '3.8'
+
+# This section defines all the services (containers) that make up your application.
+services:
+
+  # 1. The App Service (Frontend, Chat Logic)
+  app-service:
+    # 'build' tells Docker Compose to build this image from the Dockerfile
+    # in the './app' directory.
+    build: ./app
+    container_name: app-container
+    ports:
+      # Exposes port 5000 on your host machine and maps it to port 5000 in the container.
+      - "5000:5000"
+    # Injects all variables from the .env file into this container.
+    env_file:
+      - .env
+    # 'depends_on' ensures that the 'auth-service' service is started
+    # before this one, preventing connection errors on startup.
+    depends_on:
+      - auth-service
+    # Automatically restarts the container if it crashes or the host reboots.
+    restart: always
+
+  # 2. The Auth Service (User Management, JWT)
+  auth-service:
+    build: ./auth
+    container_name: auth-container
+    # No ports are exposed to the host, as this service is only accessed internally
+    # by the app-service.
+    env_file:
+      - .env
+    # This service depends on the database being ready first.
+    depends_on:
+      - postgres-db-service
+    restart: always
+
+  # 3. The PostgreSQL Database Service
+  postgres-db-service:
+    # 'image' tells Docker Compose to pull the official postgres image from Docker Hub
+    # instead of building it from a local Dockerfile.
+    image: postgres:17.5-alpine3.22
+    container_name: postgres-db-container
+    # The hostname within the Docker network. This MUST match POSTGRES_HOST in your .env file.
+    hostname: postgres-db
+    env_file:
+      - .env
+    # This volume ensures that your database data is persisted even if the
+    # container is removed and recreated.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    restart: always
+
+# This top-level section declares the named volumes used by the services.
+# This allows the data to persist independently of the container's lifecycle.
+volumes:
+  postgres_data:
+    name: postgres-data-volume
+
+# Common Network for the services to interact
+networks:
+  default:
+    name: genai-app-network
