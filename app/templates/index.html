@@ -40,99 +40,99 @@
         const errorContainer = document.getElementById('errorContainer');
         const errorMessage = document.getElementById('errorMessage');
 
-        // This JS automatically handles resizing the textarea as you type
         promptInput.addEventListener('input', () => {
             promptInput.style.height = 'auto';
             promptInput.style.height = (promptInput.scrollHeight) + 'px';
         });
 
-        // Your existing JavaScript for chat functionality goes here.
-        // It does not need to be changed.
-        // I've copied it below for completeness.
-
+        // --- START OF FIX ---
+        // 1. Initialize a flag to prevent multiple requests at once.
+        let isRequestInProgress = false;
         let conversation = [];
 
-        // Function to display a message, now with better HTML parsing
-        function displayMessage(role, text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', role);
+        async function handleSend() {
+            // 2. If a request is already running, do nothing.
+            if (isRequestInProgress) {
+                return;
+            }
 
-            // A more robust way to handle markdown-like text from Gemini
-            // This is a simplified parser
-            let formattedText = text
-                .replace(/</g, "<").replace(/>/g, ">") // Sanitize HTML tags
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-                .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
-                .replace(/`([^`]+)`/g, '<code>$1</code>') // Inline code
-                .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>') // Code blocks
-                .replace(/\n/g, '<br>'); // Newlines
-            //below line removed as 'You:' and 'Gemini:' is not required
-            //messageDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'Gemini'}:</strong><br>${formattedText}`;
-            messageDiv.innerHTML = formattedText;
-            conversationHistoryDiv.appendChild(messageDiv);
-            conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight;
-        }
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
 
-async function handleSend() {
-    const prompt = promptInput.value.trim();
-    if (!prompt) return;
+            // 3. Set the lock to true.
+            isRequestInProgress = true;
 
-    // Display the user's message immediately for a good UX.
-    // The server will handle masking.
-    displayMessage('user', prompt);
+            // Optimistically display the user's message
+            displayMessage('user', prompt);
+            
+            const currentHistory = conversation;
 
-    const currentHistory = conversation; // Keep a copy of the history to send
+            promptInput.value = '';
+            promptInput.style.height = 'auto';
+            errorContainer.classList.add('hidden');
+            errorMessage.textContent = '';
+            loadingDiv.classList.remove('hidden');
+            generateButton.disabled = true;
+            promptInput.disabled = true;
 
-    // Clear the input and disable the form
-    promptInput.value = '';
-    promptInput.style.height = 'auto';
-    errorContainer.classList.add('hidden');
-    errorMessage.textContent = '';
-    loadingDiv.classList.remove('hidden');
-    generateButton.disabled = true;
-    promptInput.disabled = true;
+            try {
+                const response = await fetch('/generate_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, history: currentHistory })
+                });
 
-    try {
-        const response = await fetch('/generate_text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // Send the CURRENT prompt and the history BEFORE this prompt.
-            // DO NOT add the new prompt to the history here.
-            body: JSON.stringify({ prompt: prompt, history: currentHistory })
-        });
+                if (!response.ok) {
+                    if (response.status === 401) { window.location.href = '/login'; return; }
+                    const data = await response.json();
+                    throw new Error(data.error || 'Something went wrong.');
+                }
 
-        if (!response.ok) {
-            // ... (your existing error handling) ...
-        }
-
-        const data = await response.json();
-        
-        // The server is the source of truth. It sends back the
-        // AI's response AND the complete, correct new history.
-        
-        // First, remove the last user message we optimistically displayed
-        conversationHistoryDiv.lastChild.remove();
-        
-        // Now, display the fully correct, masked user message from the server's history
-        const lastUserMessage = data.history[data.history.length - 2];
-        displayMessage(lastUserMessage.role, lastUserMessage.parts[0].text);
-
-        // Then display the AI's response
-        displayMessage('model', data.generated_text);
-        
-        // Finally, update the conversation state with the new, correct history from the server.
-        conversation = data.history;
+                const data = await response.json();
+                
+                // This logic is now safe because another request can't interfere.
+                conversationHistoryDiv.lastChild.remove(); // Remove the optimistic raw message
+                
+                const lastUserMessage = data.history[data.history.length - 2];
+                displayMessage(lastUserMessage.role, lastUserMessage.parts[0].text); // Display correct masked message
+                
+                displayMessage('model', data.generated_text);
+                
+                conversation = data.history;
 
             } catch (error) {
                 errorContainer.classList.remove('hidden');
                 errorMessage.textContent = `Error: ${error.message}`;
-                conversation.pop();
+                // If there was an error, we still need to remove the optimistic message
+                // to prevent history corruption.
+                if(conversationHistoryDiv.lastChild.classList.contains('user')){
+                    conversationHistoryDiv.lastChild.remove();
+                }
             } finally {
+                // 4. ALWAYS release the lock, whether it succeeded or failed.
+                isRequestInProgress = false;
+                
                 loadingDiv.classList.add('hidden');
                 generateButton.disabled = false;
                 promptInput.disabled = false;
                 promptInput.focus();
             }
+        }
+        // --- END OF FIX ---
+
+        function displayMessage(role, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', role);
+            let formattedText = text
+                .replace(/</g, "<").replace(/>/g, ">")
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+                .replace(/\n/g, '<br>');
+            messageDiv.innerHTML = formattedText;
+            conversationHistoryDiv.appendChild(messageDiv);
+            conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight;
         }
         
         generateButton.addEventListener('click', handleSend);
