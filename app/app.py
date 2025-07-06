@@ -20,6 +20,7 @@ app.config['SECRET_KEY'] = os.environ.get('APP_SECRET_KEY')
 AUTH_SERVICE_URL = os.environ.get('AUTH_SERVICE_URL') # e.g., http://auth-service:5001
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 JWT_SECRET_KEY = os.environ.get('AUTH_SECRET_KEY') # Must be the same as in Auth Service
+PII_SERVICE_URL = os.environ.get('PII_SERVICE_URL')
 
 # --- START OF DIAGNOSTIC CODE ---
 print("--- FLASK APP DEBUGGING ---", flush=True)
@@ -140,6 +141,7 @@ def index():
     return render_template('index.html')
 
 
+# --- generate_text() Function ---
 @app.route('/generate_text', methods=['POST'])
 @token_required
 def generate_text():
@@ -150,8 +152,17 @@ def generate_text():
         return jsonify({'error': 'No prompt provided'}), 400
 
     try:
+        # --- NEW STEP: Call PII Service to mask the prompt ---
+        pii_response = requests.post(f"{PII_SERVICE_URL}/api/mask-pii", json={'text': user_prompt})
+        pii_response.raise_for_status() # Raise an exception for bad status codes
+        masked_prompt = pii_response.json().get('masked_text')
+        # --- END OF NEW STEP ---
+
         chat = model.start_chat(history=conversation_history)
-        response = chat.send_message(user_prompt)
+        
+        # Use the MASKED prompt to send to Gemini
+        response = chat.send_message(masked_prompt)
+        
         generated_content = response.text
         updated_history = [
             {'role': message.role, 'parts': [part.text for part in message.parts]}
@@ -161,6 +172,9 @@ def generate_text():
             'generated_text': generated_content,
             'history': updated_history
         })
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling PII service: {e}")
+        return jsonify({'error': 'Could not connect to the PII masking service.'}), 503
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
         return jsonify({'error': str(e)}), 500

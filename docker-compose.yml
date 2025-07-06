@@ -19,6 +19,7 @@ services:
     # before this one, preventing connection errors on startup.
     depends_on:
       - auth-service
+      - mask-service
     # Automatically restarts the container if it crashes or the host reboots.
     restart: always
 
@@ -33,6 +34,14 @@ services:
     # This service depends on the database being ready first.
     depends_on:
       - postgres-db-service
+    restart: always
+
+  # --- NEW PII SERVICE DEFINITION ---
+  mask-service:
+    build: ./mask
+    container_name: mask-container
+    env_file:
+      - .env
     restart: always
 
   # 3. The PostgreSQL Database Service
