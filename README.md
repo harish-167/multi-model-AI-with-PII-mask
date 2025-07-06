@@ -1,4 +1,4 @@
-# About gen-ai-app
+# About Flask Gemini Chatbot
 A Python Flask Generative AI web application using [gemini-2.0-flash](https://ai.google.dev/gemini-api/docs/models#gemini-2.0-flash).
 
 ### Steps to build and run
