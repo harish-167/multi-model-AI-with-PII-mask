@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Download the spaCy language model
 # This bakes the model into the image for faster startup
-RUN python -m spacy download en_core_web_lg
+RUN python -m spacy download en_core_web_sm
 
 # Copy the rest of the application's code into the container at /app
 COPY . .
