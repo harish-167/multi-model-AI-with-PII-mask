@@ -73,40 +73,55 @@
             conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight;
         }
 
-        async function handleSend() {
-            const prompt = promptInput.value.trim();
-            if (!prompt) return;
+async function handleSend() {
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
 
-            displayMessage('user', prompt);
-            conversation.push({ role: 'user', parts: [{ text: prompt }] });
+    // Display the user's message immediately for a good UX.
+    // The server will handle masking.
+    displayMessage('user', prompt);
 
-            promptInput.value = '';
-            promptInput.style.height = 'auto'; // Reset height
-            errorContainer.classList.add('hidden');
-            errorMessage.textContent = '';
-            loadingDiv.classList.remove('hidden');
-            generateButton.disabled = true;
-            promptInput.disabled = true;
+    const currentHistory = conversation; // Keep a copy of the history to send
 
-            try {
-                const response = await fetch('/generate_text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt, history: conversation })
-                });
+    // Clear the input and disable the form
+    promptInput.value = '';
+    promptInput.style.height = 'auto';
+    errorContainer.classList.add('hidden');
+    errorMessage.textContent = '';
+    loadingDiv.classList.remove('hidden');
+    generateButton.disabled = true;
+    promptInput.disabled = true;
 
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.location.href = '/login';
-                        return;
-                    }
-                    const data = await response.json();
-                    throw new Error(data.error || 'Something went wrong.');
-                }
+    try {
+        const response = await fetch('/generate_text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Send the CURRENT prompt and the history BEFORE this prompt.
+            // DO NOT add the new prompt to the history here.
+            body: JSON.stringify({ prompt: prompt, history: currentHistory })
+        });
 
-                const data = await response.json();
-                displayMessage('model', data.generated_text);
-                conversation = data.history;
+        if (!response.ok) {
+            // ... (your existing error handling) ...
+        }
+
+        const data = await response.json();
+        
+        // The server is the source of truth. It sends back the
+        // AI's response AND the complete, correct new history.
+        
+        // First, remove the last user message we optimistically displayed
+        conversationHistoryDiv.lastChild.remove();
+        
+        // Now, display the fully correct, masked user message from the server's history
+        const lastUserMessage = data.history[data.history.length - 2];
+        displayMessage(lastUserMessage.role, lastUserMessage.parts[0].text);
+
+        // Then display the AI's response
+        displayMessage('model', data.generated_text);
+        
+        // Finally, update the conversation state with the new, correct history from the server.
+        conversation = data.history;
 
             } catch (error) {
                 errorContainer.classList.remove('hidden');

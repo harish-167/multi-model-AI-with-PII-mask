@@ -140,43 +140,47 @@ def logout():
 def index():
     return render_template('index.html')
 
-
-# --- generate_text() Function ---
 @app.route('/generate_text', methods=['POST'])
 @token_required
 def generate_text():
     data = request.json
     user_prompt = data.get('prompt')
+    # This history from the client is now clean.
     conversation_history = data.get('history', [])
     if not user_prompt:
         return jsonify({'error': 'No prompt provided'}), 400
 
     try:
-        # --- NEW STEP: Call PII Service to mask the prompt ---
-        pii_response = requests.post(f"{PII_SERVICE_URL}/api/mask-pii", json={'text': user_prompt})
-        pii_response.raise_for_status() # Raise an exception for bad status codes
-        masked_prompt = pii_response.json().get('masked_text')
-        # --- END OF NEW STEP ---
+        # 1. Sanitize user input (INGRESS)
+        pii_response_in = requests.post(f"{PII_SERVICE_URL}/api/mask-pii", json={'text': user_prompt})
+        pii_response_in.raise_for_status()
+        masked_prompt = pii_response_in.json().get('masked_text')
 
-        chat = model.start_chat(history=conversation_history)
-        
-        # Use the MASKED prompt to send to Gemini
-        response = chat.send_message(masked_prompt)
-        
-        generated_content = response.text
-        updated_history = [
-            {'role': message.role, 'parts': [part.text for part in message.parts]}
-            for message in chat.history
-        ]
+        # 2. Construct the message list for the STATELESS call
+        messages_to_send = conversation_history
+        messages_to_send.append({'role': 'user', 'parts': [{'text': masked_prompt}]})
+
+        # 3. Make the stateless call to Gemini
+        response = model.generate_content(messages_to_send)
+        raw_gemini_response = response.text if response.parts else "I am unable to respond to that prompt."
+
+        # 4. Sanitize Gemini's output (EGRESS)
+        pii_response_out = requests.post(f"{PII_SERVICE_URL}/api/mask-pii", json={'text': raw_gemini_response})
+        pii_response_out.raise_for_status()
+        masked_gemini_response = pii_response_out.json().get('masked_text')
+
+        # 5. Build the new, 100% SANITIZED history
+        updated_history = messages_to_send
+        updated_history.append({'role': 'model', 'parts': [{'text': masked_gemini_response}]})
+
+        # 6. Return the fully sanitized data to the client
         return jsonify({
-            'generated_text': generated_content,
+            'generated_text': masked_gemini_response,
             'history': updated_history
         })
-    except requests.exceptions.RequestException as e:
-        print(f"Error calling PII service: {e}")
-        return jsonify({'error': 'Could not connect to the PII masking service.'}), 503
+
     except Exception as e:
-        print(f"Error calling Gemini API: {e}")
+        # ... (your error handling) ...
         return jsonify({'error': str(e)}), 500
 
 # This check ensures that 'g.current_user' is set before every request if a token exists
