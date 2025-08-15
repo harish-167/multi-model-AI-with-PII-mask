@@ -20,6 +20,7 @@ services:
     depends_on:
       - auth-service
       - mask-service
+      - gemini-service
     # Automatically restarts the container if it crashes or the host reboots.
     restart: always
 
@@ -40,6 +41,14 @@ services:
   mask-service:
     build: ./mask
     container_name: mask-container
+    env_file:
+      - .env
+    restart: always
+
+  # --- NEW GEMINI WORKER SERVICE ---
+  gemini-service:
+    build: ./gemini
+    container_name: gemini-service
     env_file:
       - .env
     restart: always
