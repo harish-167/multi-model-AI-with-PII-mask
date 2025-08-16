@@ -138,7 +138,10 @@ def logout():
 @app.route('/')
 @token_required
 def index():
-    return render_template('index.html')
+    # Get the list of available models from our configuration
+    available_models = list(AI_SERVICE_URLS.keys())
+    # Pass this list to the template
+    return render_template('index.html', models=available_models)
 
 
 # This is the main router logic
@@ -148,7 +151,7 @@ def generate_text():
     data = request.json
     user_prompt = data.get('prompt')
     conversation_history = data.get('history', [])
-    model_choice = "gemini" 
+    model_choice = data.get('model', 'gemini')
     
     if not user_prompt:
         return jsonify({'error': 'No prompt provided'}), 400

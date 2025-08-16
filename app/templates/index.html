@@ -1,7 +1,19 @@
 <!-- templates/index.html -->
 {% extends "base.html" %}
 
-{% block title %}Gemini AI Chat{% endblock %}
+{% block title %}Multi-Model AI Chat{% endblock %}
+
+{% block content %}
+<!-- START OF NEW HTML BLOCK -->
+<div class="model-selector-container">
+    <label for="modelSelector">Choose a Model:</label>
+    <select id="modelSelector">
+        {% for model in models %}
+            <option value="{{ model }}">{{ model | capitalize }}</option>
+        {% endfor %}
+    </select>
+</div>
+<!-- END OF NEW HTML BLOCK -->
 
 {% block content %}
 <div class="chat-container">
@@ -39,6 +51,7 @@
         const loadingDiv = document.getElementById('loading');
         const errorContainer = document.getElementById('errorContainer');
         const errorMessage = document.getElementById('errorMessage');
+        const modelSelector = document.getElementById('modelSelector'); // <-- GET THE NEW DROPDOWN
 
         promptInput.addEventListener('input', () => {
             promptInput.style.height = 'auto';
@@ -57,6 +70,8 @@
             }
 
             const prompt = promptInput.value.trim();
+            const selectedModel = modelSelector.value; // <-- READ THE SELECTED VALUE
+
             if (!prompt) return;
 
             // 3. Set the lock to true.
@@ -79,7 +94,11 @@
                 const response = await fetch('/generate_text', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt, history: currentHistory })
+                    body: JSON.stringify({ 
+                        prompt: prompt, 
+                        history: currentHistory,
+                        model: selectedModel
+                    })
                 });
 
                 if (!response.ok) {
