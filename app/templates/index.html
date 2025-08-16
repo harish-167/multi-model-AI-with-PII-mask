@@ -1,10 +1,8 @@
-<!-- templates/index.html -->
 {% extends "base.html" %}
 
 {% block title %}Multi-Model AI Chat{% endblock %}
 
 {% block content %}
-<!-- START OF NEW HTML BLOCK -->
 <div class="model-selector-container">
     <label for="modelSelector">Choose a Model:</label>
     <select id="modelSelector">
@@ -13,14 +11,12 @@
         {% endfor %}
     </select>
 </div>
-<!-- END OF NEW HTML BLOCK -->
 
-{% block content %}
 <div class="chat-container">
     <div id="conversationHistory">
         <!-- Example of how a message will look -->
         <div class="message model">
-            Hello! How can I help you today?
+            Hello! Select a model and ask me anything.
         </div>
     </div>
 
@@ -33,7 +29,7 @@
     </div>
 
     <div class="chat-input-area">
-        <textarea id="promptInput" placeholder="Message Gemini..." rows="1"></textarea>
+        <textarea id="promptInput" placeholder="Message..." rows="1"></textarea>
         <button id="generateButton" title="Send Message">
             <!-- SVG Icon for Send -->
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
@@ -51,30 +47,25 @@
         const loadingDiv = document.getElementById('loading');
         const errorContainer = document.getElementById('errorContainer');
         const errorMessage = document.getElementById('errorMessage');
-        const modelSelector = document.getElementById('modelSelector'); // <-- GET THE NEW DROPDOWN
+        const modelSelector = document.getElementById('modelSelector');
 
         promptInput.addEventListener('input', () => {
             promptInput.style.height = 'auto';
             promptInput.style.height = (promptInput.scrollHeight) + 'px';
         });
 
-        // --- START OF FIX ---
-        // 1. Initialize a flag to prevent multiple requests at once.
         let isRequestInProgress = false;
         let conversation = [];
 
         async function handleSend() {
-            // 2. If a request is already running, do nothing.
             if (isRequestInProgress) {
                 return;
             }
 
             const prompt = promptInput.value.trim();
-            const selectedModel = modelSelector.value; // <-- READ THE SELECTED VALUE
-
+            const selectedModel = modelSelector.value;
             if (!prompt) return;
 
-            // 3. Set the lock to true.
             isRequestInProgress = true;
 
             // Optimistically display the user's message
@@ -96,7 +87,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         prompt: prompt, 
-                        history: currentHistory,
+                        history: currentHistory, 
                         model: selectedModel
                     })
                 });
@@ -109,11 +100,10 @@
 
                 const data = await response.json();
                 
-                // This logic is now safe because another request can't interfere.
-                conversationHistoryDiv.lastChild.remove(); // Remove the optimistic raw message
+                conversationHistoryDiv.lastChild.remove();
                 
                 const lastUserMessage = data.history[data.history.length - 2];
-                displayMessage(lastUserMessage.role, lastUserMessage.parts[0].text); // Display correct masked message
+                displayMessage(lastUserMessage.role, lastUserMessage.parts[0].text);
                 
                 displayMessage('model', data.generated_text);
                 
@@ -122,28 +112,23 @@
             } catch (error) {
                 errorContainer.classList.remove('hidden');
                 errorMessage.textContent = `Error: ${error.message}`;
-                // If there was an error, we still need to remove the optimistic message
-                // to prevent history corruption.
-                if(conversationHistoryDiv.lastChild.classList.contains('user')){
+                if(conversationHistoryDiv.lastChild && conversationHistoryDiv.lastChild.classList.contains('user')){
                     conversationHistoryDiv.lastChild.remove();
                 }
             } finally {
-                // 4. ALWAYS release the lock, whether it succeeded or failed.
                 isRequestInProgress = false;
-                
                 loadingDiv.classList.add('hidden');
                 generateButton.disabled = false;
                 promptInput.disabled = false;
                 promptInput.focus();
             }
         }
-        // --- END OF FIX ---
 
         function displayMessage(role, text) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', role);
             let formattedText = text
-                .replace(/</g, "<").replace(/>/g, ">")
+                .replace(/</g, "&lt;").replace(/>/g, "&gt;")
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
