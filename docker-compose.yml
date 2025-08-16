@@ -21,7 +21,6 @@ services:
       - auth-service
       - mask-service
       - gemini-service
-      - mistral-service
     # Automatically restarts the container if it crashes or the host reboots.
     restart: always
 
@@ -50,14 +49,6 @@ services:
   gemini-service:
     build: ./gemini
     container_name: gemini-service
-    env_file:
-      - .env
-    restart: always
-
-  # --- NEW MISTRAL WORKER SERVICE ---
-  mistral-service:
-    build: ./mistral
-    container_name: mistral-service
     env_file:
       - .env
     restart: always

@@ -21,8 +21,7 @@ JWT_SECRET_KEY = os.environ.get('AUTH_SECRET_KEY')
 
 # --- NEW: Define the URLs for our AI worker services ---
 AI_SERVICE_URLS = {
-    'gemini': os.environ.get('GEMINI_SERVICE_URL'),
-    'mistral': os.environ.get('MISTRAL_SERVICE_URL')
+    'gemini': os.environ.get('GEMINI_SERVICE_URL')
     # In the future, you'll add more:
     # 'openai': os.environ.get('OPENAI_SERVICE_URL')
 }
@@ -162,19 +161,10 @@ def generate_text():
         pii_response_in = requests.post(f"{PII_SERVICE_URL}/api/mask-pii", json={'text': user_prompt})
         pii_response_in.raise_for_status()
         masked_prompt = pii_response_in.json().get('masked_text')
-                # --- NEW: Format Translation Logic ---
-        messages_to_send = []
-        if model_choice == 'mistral':
-            # Translate to Mistral's format: {'role': 'user'/'assistant', 'content': '...'}
-            for message in conversation_history:
-                role = 'assistant' if message['role'] == 'model' else message['role']
-                messages_to_send.append({'role': role, 'content': message['parts'][0]['text']})
-            messages_to_send.append({'role': 'user', 'content': masked_prompt})
-        else: # Default to Gemini's format
-            # Gemini format: {'role': 'user'/'model', 'parts': [{'text': '...'}]}
-            messages_to_send = conversation_history
-            messages_to_send.append({'role': 'user', 'parts': [{'text': masked_prompt}]})
-        # --- End of Format Translation ---
+
+        # 2. Build the message list to send to the worker service
+        messages_to_send = conversation_history
+        messages_to_send.append({'role': 'user', 'parts': [{'text': masked_prompt}]})
 
         # 3. ROUTE: Choose the correct AI worker based on model_choice
         ai_worker_url = AI_SERVICE_URLS.get(model_choice)
@@ -192,8 +182,7 @@ def generate_text():
         masked_ai_response = pii_response_out.json().get('masked_text')
 
         # 6. Build the final, sanitized history
-        updated_history = conversation_history
-        updated_history.append({'role': 'user', 'parts': [{'text': masked_prompt}]})
+        updated_history = messages_to_send
         updated_history.append({'role': 'model', 'parts': [{'text': masked_ai_response}]})
 
         # 7. Return the sanitized data to the client
