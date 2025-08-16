@@ -14,10 +14,7 @@
 
 <div class="chat-container">
     <div id="conversationHistory">
-        <!-- Example of how a message will look -->
-        <div class="message model">
-            Hello! Select a model and ask me anything.
-        </div>
+	    <!-- Chat messages will be dynamically inserted here by JavaScript -->
     </div>
 
     <div id="loading" class="spinner-wrapper hidden">
@@ -54,10 +51,30 @@
             promptInput.style.height = (promptInput.scrollHeight) + 'px';
         });
 
+        // --- START OF NEW CODE ---
+        // Add an event listener to the model selector dropdown
+        modelSelector.addEventListener('change', () => {
+            // 1. Clear the internal conversation history array
+            conversation = [];
+
+            // 2. Clear the visible chat on the screen
+            conversationHistoryDiv.innerHTML = '';
+
+            // 3. (Optional but good UX) Display a message confirming the new chat
+            const selectedModelName = modelSelector.options[modelSelector.selectedIndex].text;
+            displayMessage('model', `New chat started with ${selectedModelName}.`);
+        });
+        // --- END OF NEW CODE ---
+
         let isRequestInProgress = false;
         let conversation = [];
 
+        // Initialize the first welcome message
+        displayMessage('model', `Hello! Select a model and ask me anything.`);
+
+
         async function handleSend() {
+            // ... (The entire handleSend function remains exactly the same as before) ...
             if (isRequestInProgress) {
                 return;
             }
@@ -67,12 +84,8 @@
             if (!prompt) return;
 
             isRequestInProgress = true;
-
-            // Optimistically display the user's message
             displayMessage('user', prompt);
-            
             const currentHistory = conversation;
-
             promptInput.value = '';
             promptInput.style.height = 'auto';
             errorContainer.classList.add('hidden');
@@ -85,9 +98,9 @@
                 const response = await fetch('/generate_text', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        prompt: prompt, 
-                        history: currentHistory, 
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        history: currentHistory,
                         model: selectedModel
                     })
                 });
@@ -99,14 +112,11 @@
                 }
 
                 const data = await response.json();
-                
+
                 conversationHistoryDiv.lastChild.remove();
-                
                 const lastUserMessage = data.history[data.history.length - 2];
                 displayMessage(lastUserMessage.role, lastUserMessage.parts[0].text);
-                
                 displayMessage('model', data.generated_text);
-                
                 conversation = data.history;
 
             } catch (error) {
@@ -132,13 +142,13 @@
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
-                .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+                .replace(/```(\w*)\n([\sS]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
                 .replace(/\n/g, '<br>');
             messageDiv.innerHTML = formattedText;
             conversationHistoryDiv.appendChild(messageDiv);
             conversationHistoryDiv.scrollTop = conversationHistoryDiv.scrollHeight;
         }
-        
+
         generateButton.addEventListener('click', handleSend);
         promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -148,4 +158,5 @@
         });
     });
 </script>
+
 {% endblock %}
